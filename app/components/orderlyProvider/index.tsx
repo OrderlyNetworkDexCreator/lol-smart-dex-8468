@@ -7,6 +7,18 @@ const NETWORK_ID_KEY = "orderly_network_id";
 
 const getNetworkId = (): NetworkId => {
 	if (typeof window === "undefined") return "mainnet";
+	
+	const disableMainnet = import.meta.env.VITE_DISABLE_MAINNET === 'true';
+	const disableTestnet = import.meta.env.VITE_DISABLE_TESTNET === 'true';
+	
+	if (disableMainnet && !disableTestnet) {
+		return "testnet";
+	}
+	
+	if (disableTestnet && !disableMainnet) {
+		return "mainnet";
+	}
+	
 	return (localStorage.getItem(NETWORK_ID_KEY) as NetworkId) || "mainnet";
 };
 
@@ -58,8 +70,26 @@ const OrderlyProvider = (props: { children: ReactNode }) => {
 	const [isClient, setIsClient] = useState(false);
 	
 	const privyAppId = import.meta.env.VITE_PRIVY_APP_ID;
-	const privyTermsOfUse = import.meta.env.VITE_PRIVY_TERMS_OF_USE;
-	const usePrivy = !!(privyAppId && privyTermsOfUse);
+	const usePrivy = !!privyAppId;
+
+	const parseChainIds = (envVar: string | undefined): Array<{id: number}> | undefined => {
+		if (!envVar) return undefined;
+		return envVar.split(',')
+			.map(id => id.trim())
+			.filter(id => id)
+			.map(id => ({ id: parseInt(id, 10) }))
+			.filter(chain => !isNaN(chain.id));
+	};
+
+	const disableMainnet = import.meta.env.VITE_DISABLE_MAINNET === 'true';
+	const mainnetChains = disableMainnet ? [] : parseChainIds(import.meta.env.VITE_ORDERLY_MAINNET_CHAINS);
+	const disableTestnet = import.meta.env.VITE_DISABLE_TESTNET === 'true';
+	const testnetChains = disableTestnet ? [] : parseChainIds(import.meta.env.VITE_ORDERLY_TESTNET_CHAINS);
+
+	const chainFilter = (mainnetChains || testnetChains) ? {
+		...(mainnetChains && { mainnet: mainnetChains }),
+		...(testnetChains && { testnet: testnetChains })
+	} : undefined;
 
 	// Handle client-side only rendering
 	useEffect(() => {
@@ -89,6 +119,8 @@ const OrderlyProvider = (props: { children: ReactNode }) => {
 			networkId={networkId}
 			onChainChanged={onChainChanged}
 			appIcons={config.orderlyAppProvider.appIcons}
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			{...(chainFilter && { chainFilter } as any)}
 		>
 			{props.children}
 		</OrderlyAppProvider>

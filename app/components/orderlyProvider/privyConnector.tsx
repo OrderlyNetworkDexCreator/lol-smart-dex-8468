@@ -6,6 +6,7 @@ import { CreateConnectorFn } from 'wagmi';
 import { Adapter, WalletError , WalletAdapterNetwork, WalletNotReadyError } from '@solana/wallet-adapter-base';
 import { LedgerWalletAdapter, PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
 import { createDefaultAddressSelector, createDefaultAuthorizationResultCache, SolanaMobileWalletAdapter } from '@solana-mobile/wallet-adapter-mobile';
+import { QueryClient } from "@tanstack/query-core";
 
 const PrivyConnector = ({ children, networkId }: {
   children: ReactNode;
@@ -14,6 +15,9 @@ const PrivyConnector = ({ children, networkId }: {
   const appId = import.meta.env.VITE_PRIVY_APP_ID;
   const termsOfUseUrl = import.meta.env.VITE_PRIVY_TERMS_OF_USE;
   const walletConnectProjectId = import.meta.env.VITE_WALLET_CONNECT_PROJECT_ID;
+  const enableAbstractWallet = import.meta.env.VITE_ENABLE_ABSTRACT_WALLET === 'true';
+  const disableEVMWallets = import.meta.env.VITE_DISABLE_EVM_WALLETS === 'true';
+  const disableSolanaWallets = import.meta.env.VITE_DISABLE_SOLANA_WALLETS === 'true';
   const isBrowser = typeof window !== 'undefined';
 
   const connectors: CreateConnectorFn[] = [injected()];
@@ -36,10 +40,10 @@ const PrivyConnector = ({ children, networkId }: {
     <WalletConnectorPrivyProvider
       network={networkId === 'mainnet' ? Network.mainnet : Network.testnet}
       termsOfUse={termsOfUseUrl}
-      wagmiConfig={{
+      wagmiConfig={disableEVMWallets ? undefined : {
         connectors
       }}
-      solanaConfig={{
+      solanaConfig={disableSolanaWallets ? undefined : {
         wallets: [
           new PhantomWalletAdapter(),
           new SolflareWalletAdapter(),
@@ -69,6 +73,9 @@ const PrivyConnector = ({ children, networkId }: {
         },
         appid: appId,
       }}
+      abstractConfig={enableAbstractWallet ? {
+        queryClient: new QueryClient(),
+      } : undefined}
     >
       {children}
     </WalletConnectorPrivyProvider>
