@@ -1,13 +1,22 @@
 import { TradingPageProps } from "@orderly.network/trading";
-import { FooterProps, MainNavWidgetProps } from "@orderly.network/ui-scaffold";
+import { BottomNavProps, FooterProps, MainNavWidgetProps } from "@orderly.network/ui-scaffold";
 import { AppLogos } from "@orderly.network/react-app";
 import { OrderlyActiveIcon, OrderlyIcon } from "../components/icons/orderly";
 import { withBasePath } from "./base-path";
+import { PortfolioActiveIcon, PortfolioInactiveIcon, TradingActiveIcon, TradingInactiveIcon, LeaderboardActiveIcon, LeaderboardInactiveIcon } from "@orderly.network/ui";
 
 interface MainNavItem {
   name: string;
   href: string;
   target?: string;
+}
+
+interface ColorConfigInterface {
+  upColor?: string;
+  downColor?: string;
+  pnlUpColor?: string;
+  pnlDownColor?: string;
+  chartBG?: string;
 }
 
 export type OrderlyConfig = {
@@ -17,6 +26,7 @@ export type OrderlyConfig = {
   scaffold: {
     mainNavProps: MainNavWidgetProps;
     footerProps: FooterProps;
+    bottomNavProps: BottomNavProps;
   };
   tradingPage: {
     tradingViewConfig: TradingPageProps["tradingViewConfig"];
@@ -37,6 +47,7 @@ const DEFAULT_ENABLED_MENUS: MainNavItem[] = [
   { name: "Trading", href: "/" },
   { name: "Portfolio", href: "/portfolio" },
   { name: "Markets", href: "/markets" },
+  { name: "Leaderboard", href: "/leaderboard" },
 ];
 
 const getCustomMenuItems = (): MainNavItem[] => {
@@ -85,9 +96,13 @@ const getEnabledMenus = (): MainNavItem[] => {
   try {
     const enabledMenuNames = enabledMenusEnv.split(',').map(name => name.trim());
     
-    const enabledMenus = ALL_MENU_ITEMS.filter(item => 
-      enabledMenuNames.includes(item.name)
-    );
+    const enabledMenus: MainNavItem[] = [];
+    for (const menuName of enabledMenuNames) {
+      const menuItem = ALL_MENU_ITEMS.find(item => item.name === menuName);
+      if (menuItem) {
+        enabledMenus.push(menuItem);
+      }
+    }
     
     return enabledMenus.length > 0 ? enabledMenus : DEFAULT_ENABLED_MENUS;
   } catch (e) {
@@ -101,6 +116,85 @@ const getAllMenuItems = (): MainNavItem[] => {
   const customMenus = getCustomMenuItems();
   
   return [...enabledMenus, ...customMenus];
+};
+
+const getPnLBackgroundImages = (): string[] => {
+  const useCustomPnL = import.meta.env.VITE_USE_CUSTOM_PNL_POSTERS === "true";
+  
+  if (useCustomPnL) {
+    const customPnLCount = parseInt(import.meta.env.VITE_CUSTOM_PNL_POSTER_COUNT, 10);
+    
+    if (isNaN(customPnLCount) || customPnLCount < 1) {
+      console.warn("Invalid VITE_CUSTOM_PNL_POSTER_COUNT. Using default posters.");
+      return [
+        withBasePath("/pnl/poster_bg_1.png"),
+        withBasePath("/pnl/poster_bg_2.png"),
+        withBasePath("/pnl/poster_bg_3.png"),
+        withBasePath("/pnl/poster_bg_4.png"),
+      ];
+    }
+    
+    const customPosters: string[] = [];
+    for (let i = 1; i <= customPnLCount; i++) {
+      customPosters.push(withBasePath(`/pnl/poster_bg_${i}.webp`));
+    }
+    
+    return customPosters;
+  }
+  
+  return [
+    withBasePath("/pnl/poster_bg_1.png"),
+    withBasePath("/pnl/poster_bg_2.png"),
+    withBasePath("/pnl/poster_bg_3.png"),
+    withBasePath("/pnl/poster_bg_4.png"),
+  ];
+};
+
+const getBottomNavIcon = (menuName: string) => {
+  switch (menuName) {
+    case "Trading":
+      return { activeIcon: <TradingActiveIcon />, inactiveIcon: <TradingInactiveIcon /> };
+    case "Portfolio":
+      return { activeIcon: <PortfolioActiveIcon />, inactiveIcon: <PortfolioInactiveIcon /> };
+    case "Leaderboard":
+      return { activeIcon: <LeaderboardActiveIcon />, inactiveIcon: <LeaderboardInactiveIcon /> };
+    default:
+      throw new Error(`Unsupported menu name: ${menuName}`);
+  }
+};
+
+const getBottomNavMenus = () => {
+  const enabledMenus = getEnabledMenus();
+  
+  const supportedBottomNavMenus = ["Trading", "Portfolio", "Leaderboard"];
+  
+  return enabledMenus
+    .filter(menu => supportedBottomNavMenus.includes(menu.name))
+    .map(menu => {
+      const icons = getBottomNavIcon(menu.name);
+      return {
+        name: menu.name,
+        href: menu.href,
+        ...icons
+      };
+    })
+    .filter(menu => menu.activeIcon && menu.inactiveIcon);
+};
+
+const getColorConfig = (): ColorConfigInterface | undefined => {
+  const customColorConfigEnv = import.meta.env.VITE_TRADING_VIEW_COLOR_CONFIG;
+  
+  if (!customColorConfigEnv || typeof customColorConfigEnv !== 'string' || customColorConfigEnv.trim() === '') {
+    return undefined;
+  }
+  
+  try {
+    const customColorConfig = JSON.parse(customColorConfigEnv);
+    return customColorConfig;
+  } catch (e) {
+    console.warn("Error parsing VITE_TRADING_VIEW_COLOR_CONFIG:", e);
+    return undefined;
+  }
 };
 
 const config: OrderlyConfig = {
@@ -132,6 +226,9 @@ const config: OrderlyConfig = {
         ],
       },
     },
+    bottomNavProps: {
+      mainMenus: getBottomNavMenus(),
+    },
     footerProps: {
       telegramUrl: import.meta.env.VITE_TELEGRAM_URL || undefined,
       discordUrl: import.meta.env.VITE_DISCORD_URL || undefined,
@@ -157,14 +254,10 @@ const config: OrderlyConfig = {
       scriptSRC: withBasePath("/tradingview/charting_library/charting_library.js"),
       library_path: withBasePath("/tradingview/charting_library/"),
       customCssUrl: withBasePath("/tradingview/chart.css"),
+      colorConfig: getColorConfig(),
     },
     sharePnLConfig: {
-      backgroundImages: [
-        withBasePath("/pnl/poster_bg_1.png"),
-        withBasePath("/pnl/poster_bg_2.png"),
-        withBasePath("/pnl/poster_bg_3.png"),
-        withBasePath("/pnl/poster_bg_4.png"),
-      ],
+      backgroundImages: getPnLBackgroundImages(),
 
       color: "rgba(255, 255, 255, 0.98)",
       profitColor: "rgba(41, 223, 169, 1)",
@@ -172,8 +265,8 @@ const config: OrderlyConfig = {
       brandColor: "rgba(255, 255, 255, 0.98)",
 
       // ref
-      refLink: "https://orderly.network",
-      refSlogan: "Orderly referral",
+      refLink: typeof window !== 'undefined' ? window.location.origin : undefined,
+      refSlogan: import.meta.env.VITE_ORDERLY_BROKER_NAME || "Orderly Network",
     },
   },
 };
