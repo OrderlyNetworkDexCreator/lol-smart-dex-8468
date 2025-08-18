@@ -8,12 +8,12 @@ export const meta: MetaFunction = () => {
 
 export default function AffiliatePage() {
   return (
-    <ReferralProvider
-      becomeAnAffiliateUrl={import.meta.env.VITE_BECOME_AN_AFFILIATE_URL || "https://orderly.network"}
-      learnAffiliateUrl={import.meta.env.VITE_LEARN_AFFILIATE_URL || "https://orderly.network"}
-      referralLinkUrl={import.meta.env.VITE_REFERRAL_LINK_URL || "https://orderly.network"}
-    >
-      <Dashboard.AffiliatePage />
-    </ReferralProvider>
+      <ReferralProvider
+        becomeAnAffiliateUrl="https://orderly.network"
+        learnAffiliateUrl="https://orderly.network"
+        referralLinkUrl={typeof window !== 'undefined' ? window.location.origin : "https://orderly.network"}
+      >
+        <Dashboard.AffiliatePage />
+      </ReferralProvider>
   );
 }
