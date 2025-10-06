@@ -52,11 +52,3 @@ jobs:
           else
             echo "Merge failed for main branch, skipping push"
           fi
-
-          # Sync develop branch
-          git checkout develop
-          if git merge upstream/develop --no-edit; then
-            git push origin develop
-          else
-            echo "Merge failed for develop branch, skipping push"
-          fi
