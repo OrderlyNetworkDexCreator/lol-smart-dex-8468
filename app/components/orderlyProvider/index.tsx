@@ -6,8 +6,10 @@ import { LocaleProvider, LocaleCode, LocaleEnum, defaultLanguages } from "@order
 import { withBasePath } from "@/utils/base-path";
 import { getSEOConfig, getUserLanguage } from "@/utils/seo";
 import { getRuntimeConfigBoolean, getRuntimeConfigArray, getRuntimeConfig } from "@/utils/runtime-config";
+import { createSymbolDataAdapter } from "@/utils/symbol-filter";
 import { DemoGraduationChecker } from "@/components/DemoGraduationChecker";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import ServiceDisclaimerDialog from "./ServiceDisclaimerDialog";
 
 const NETWORK_ID_KEY = "orderly_network_id";
 
@@ -102,6 +104,8 @@ const OrderlyProvider = (props: { children: ReactNode }) => {
 
 	const defaultChain = parseDefaultChain(getRuntimeConfig('VITE_DEFAULT_CHAIN'));
 
+	const dataAdapter = createSymbolDataAdapter();
+
 	const onChainChanged = useCallback(
 		(_chainId: number, {isTestnet}: {isTestnet: boolean}) => {
 			const currentNetworkId = getNetworkId();
@@ -162,8 +166,13 @@ const OrderlyProvider = (props: { children: ReactNode }) => {
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			{...(chainFilter && { chainFilter } as any)}
 			defaultChain={defaultChain}
+			dataAdapter={dataAdapter}
+			restrictedInfo={{
+				customRestrictedRegions: getRuntimeConfigArray('VITE_RESTRICTED_REGIONS'),
+			}}
 		>
 			<DemoGraduationChecker />
+			<ServiceDisclaimerDialog />
 			{props.children}
 		</OrderlyAppProvider>
 	);
